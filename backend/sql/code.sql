@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS user (
 
 
 
+
 -- backend/sql/create_inventory_table.sql
 CREATE TABLE IF NOT EXISTS inventory (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -19,6 +20,8 @@ CREATE TABLE IF NOT EXISTS inventory (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+
 
 
 
@@ -33,3 +36,14 @@ INSERT INTO user (username, email, password) VALUES
 
 
 select * from user;
+
+-- backend/sql/create_issue_table.sql
+CREATE TABLE IF NOT EXISTS issue (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  item_name VARCHAR(100) NOT NULL,
+  description TEXT,
+  quantity INT NOT NULL DEFAULT 0,
+  price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
