@@ -1,4 +1,3 @@
-```markdown
 # 🛡️ Ammunition Management System (DBMS Project)
 
 A full-stack **DBMS-based web application** designed to **manage ammunition stock, distribution, and tracking**.  
@@ -91,7 +90,6 @@ This project includes:
 
 ## **📂 Project Structure**
 
-```
 
 ammunition-management/
 │── app/
