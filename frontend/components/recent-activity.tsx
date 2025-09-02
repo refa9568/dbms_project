@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 const activities = [
   {
     id: 1,
-    user: "John Smith",
+    user: "Lt Col Saima Tania",
     action: "Added new stock",
     item: "5.56mm NATO - 1000 rounds",
     time: "2 hours ago",
@@ -13,7 +13,7 @@ const activities = [
   },
   {
     id: 2,
-    user: "Sarah Johnson",
+    user: "Captain Refa Jahan",
     action: "Issued ammunition",
     item: "7.62mm NATO - 200 rounds to Alpha Company",
     time: "4 hours ago",
@@ -21,7 +21,7 @@ const activities = [
   },
   {
     id: 3,
-    user: "Mike Wilson",
+    user: "Sergeant Rafiq Islam",
     action: "Updated expiry date",
     item: "9mm Parabellum - Lot #A2024",
     time: "6 hours ago",
