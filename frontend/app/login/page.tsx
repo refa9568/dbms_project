@@ -90,12 +90,12 @@ export default function LoginPage() {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-          <div className="mt-6 text-center text-sm text-muted-foreground">
+          { <div className="mt-6 text-center text-sm text-muted-foreground">
             <p>Demo Credentials:</p>
             <p>CO: admin/admin123</p>
-            <p>QM: qm/qm123</p>
-            <p>NCO: nco/nco123</p>
-          </div>
+            {/* <p>QM: qm/qm123</p>
+            <p>NCO: nco/nco123</p> */}
+          </div> }
         </CardContent>
       </Card>
     </div>
