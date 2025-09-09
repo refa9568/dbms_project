@@ -41,6 +41,9 @@ CREATE TABLE Ammunition (
     pistol INT DEFAULT 0
 );
 
+
+
+
 -- Ammo Type Table
 CREATE TABLE Ammo_type (
     ammo_type_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -160,7 +163,7 @@ INSERT INTO Ammo_Type_Line (ammo_type_id, ammo_id, line_type_id) VALUES
 (9, 9, 3),
 (10, 10, 1);
 
--- Inventory (ammo stocks by users)
+-- Inventory (modified to use only existing user_ids 1-9)
 INSERT INTO Inventory (user_id, quantity, lot_number, stock_date, expiry_date) VALUES
 (1, 500, 'LOT-A1', '2025-01-05', '2028-01-05'),
 (2, 300, 'LOT-B2', '2025-02-10', '2027-02-10'),
@@ -171,22 +174,22 @@ INSERT INTO Inventory (user_id, quantity, lot_number, stock_date, expiry_date) V
 (7, 550, 'LOT-G7', '2025-06-10', '2027-06-10'),
 (8, 450, 'LOT-H8', '2025-07-15', '2028-07-15'),
 (9, 350, 'LOT-I9', '2025-07-20', '2029-07-20'),
-(10, 800, 'LOT-J10', '2025-08-01', '2028-08-01');
+(1, 800, 'LOT-J10', '2025-08-01', '2028-08-01');
 
--- Issue (distribution of ammo to units/users)
+-- Issue (modified to use only existing user_ids 1-9)
 INSERT INTO Issue (inventory_stock_id, user_id, issue_date, issue_quantity, A_T_L_id) VALUES
 (1, 5, '2025-02-01', 100, 1),
 (2, 6, '2025-02-05', 50, 2),
 (3, 7, '2025-03-01', 70, 3),
 (4, 8, '2025-03-10', 120, 4),
 (5, 9, '2025-04-01', 60, 5),
-(6, 10, '2025-04-15', 90, 6),
+(6, 1, '2025-04-15', 90, 6),  -- Changed from 10 to 1
 (7, 4, '2025-05-05', 150, 7),
 (8, 3, '2025-05-20', 200, 8),
 (9, 2, '2025-06-01', 80, 9),
 (10, 1, '2025-06-10', 250, 10);
 
--- Alerts (low stock, expiry)
+-- Alert table remains the same since it only references inventory_stock_id
 INSERT INTO Alert (inventory_stock_id, alert_message, alert_date) VALUES
 (1, 'Low stock warning: Rifle ammo below reserve.', '2025-02-02 10:00:00'),
 (2, 'Expiry approaching for LOT-B2.', '2025-02-15 09:30:00'),
@@ -199,7 +202,7 @@ INSERT INTO Alert (inventory_stock_id, alert_message, alert_date) VALUES
 (9, 'Blank ammo stock falling.', '2025-07-25 09:00:00'),
 (10, 'Lot-J10 requires inspection.', '2025-08-05 13:30:00');
 
-select*from users;
+SELECT * FROM users;
 
 
 DELIMITER $$
@@ -221,6 +224,8 @@ END $$
 DELIMITER ;
 
 SELECT get_available_stock(5);
+
+
 
 DELIMITER $$
 
