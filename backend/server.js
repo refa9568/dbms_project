@@ -57,6 +57,101 @@ function queryPromise(sql, params = []) {
 // USER API ROUTES
 // ==============================
 
+// Login endpoint
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  pool.query(
+    'SELECT user_id, username, appointment, rk, role, email, phone, status FROM Users WHERE username = ? AND password_hash = ?',
+    [username, password],
+    (err, results) => {
+      if (err) {
+        console.error('Login error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      if (results.length === 0) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      const user = results[0];
+      
+      // Update last_login
+      pool.query(
+        'UPDATE Users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?',
+        [user.user_id]
+      );
+
+      res.json({ 
+        message: 'Login successful',
+        user: user
+      });
+    }
+  );
+});
+
+// Logout endpoint (just for tracking purposes)
+app.post('/api/logout', (req, res) => {
+  const { userId } = req.body;
+  
+  if (userId) {
+    // Update last logout time if needed
+    pool.query(
+      'UPDATE Users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?',
+      [userId]
+    );
+  }
+  
+  res.json({ message: 'Logged out successfully' });
+});
+// Change password
+app.post('/api/users/change-password', (req, res) => {
+  const { userId, currentPassword, newPassword } = req.body;
+  
+  if (!userId || !currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // First verify current password
+  pool.query(
+    'SELECT password_hash FROM Users WHERE user_id = ?',
+    [userId],
+    (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      if (results.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const user = results[0];
+      
+      // Verify current password (plain text comparison since we're not hashing)
+      if (user.password_hash !== currentPassword) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+
+      // Update with new password
+      pool.query(
+        'UPDATE Users SET password_hash = ? WHERE user_id = ?',
+        [newPassword, userId],
+        (updateErr, updateResult) => {
+          if (updateErr) {
+            console.error('Error updating password:', updateErr);
+            return res.status(500).json({ error: 'Failed to update password' });
+          }
+          res.json({ message: 'Password updated successfully' });
+        }
+      );
+    }
+  );
+});
 // Get all users
 app.get('/api/users', (req, res) => {
   pool.query(

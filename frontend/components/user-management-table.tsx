@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast"
 
 
 interface User {
-  id: string
+  user_id: number
   username: string
   appointment: string
   rk: string  // rank
@@ -120,9 +120,41 @@ export function UserManagementTable() {
     setIsViewDialogOpen(true)
   }
 
-  const handleEdit = (item: any) => {
+  const handleEdit = (item: User) => {
     setSelectedItem(item)
     setIsEditDialogOpen(true)
+  }
+
+  const handleEditSubmit = async (updatedData: Partial<User>) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/users/${selectedItem?.user_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update user');
+      }
+
+      toast({
+        title: "Success",
+        description: "User information updated successfully",
+      });
+      
+      setIsEditDialogOpen(false);
+      // Refresh the users list
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update user information",
+        variant: "destructive",
+      });
+    }
   }
 
   const handleChangePassword = (item: any) => {
@@ -180,23 +212,14 @@ export function UserManagementTable() {
         return
       }
 
-      if (passwordData.newPassword.length < 8) {
-        toast({
-          title: "Password Too Short",
-          description: "Password must be at least 8 characters long.",
-          variant: "destructive",
-        })
-        return
-      }
-
       // Send request to backend API
-      const response = await fetch('/api/users/change-password', {
+      const response = await fetch('http://localhost:3001/api/users/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: selectedItem?.id,
+          userId: selectedItem?.user_id,
           currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword,
         }),
@@ -278,14 +301,12 @@ export function UserManagementTable() {
               <TableHead>Role</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Login Activity</TableHead>
-              <TableHead>Security</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredData.map((item) => (
-              <TableRow key={item.id}>
+              <TableRow key={item.user_id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
@@ -319,18 +340,6 @@ export function UserManagementTable() {
                 <TableCell>
                   <div>
                     {getStatusBadge(item.status)}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Last login: {item.last_login || 'Never'}</div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-green-500" />
-                    </div>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -432,6 +441,66 @@ export function UserManagementTable() {
           </DialogContent>
         </Dialog>
 
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+              <DialogDescription>Update information for {selectedItem?.appointment}</DialogDescription>
+            </DialogHeader>
+            {selectedItem && (
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const updatedData = {
+                  email: formData.get('email') as string,
+                  phone: formData.get('phone') as string,
+                  status: formData.get('status') as "Active" | "Inactive",
+                };
+                handleEditSubmit(updatedData);
+              }} className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      defaultValue={selectedItem.email}
+                      type="email"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      defaultValue={selectedItem.phone}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select name="status" defaultValue={selectedItem.status}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Save Changes</Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
         {/* View Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
           <DialogContent className="max-w-2xl">
@@ -444,7 +513,7 @@ export function UserManagementTable() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">User ID</Label>
-                    <p className="text-sm text-muted-foreground">{selectedItem.id}</p>
+                    <p className="text-sm text-muted-foreground">{selectedItem.user_id}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Username</Label>

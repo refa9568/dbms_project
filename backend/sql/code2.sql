@@ -55,7 +55,7 @@ SELECT
     i.lot_number
 FROM Alert a
 LEFT JOIN Inventory i ON a.inventory_stock_id = i.inventory_stock_id
-LEFT JOIN User u ON a.acknowledged_by = u.user_id;
+LEFT JOIN Users u ON a.acknowledged_by = u.user_id;
 
 -- Trigger for monitoring low stock levels
 DELIMITER //
