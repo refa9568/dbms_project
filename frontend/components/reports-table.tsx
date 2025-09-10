@@ -1,8 +1,31 @@
 "use client"
 
 import type React from "react"
+import { useState, useEffect } from "react"
 
-import { useState } from "react"
+interface Report {
+  id: number
+  name: string
+  type: string
+  dateGenerated: string
+  generatedBy: string
+  period: string
+  format: string
+  status: string
+  fileSize: string
+  description?: string
+  retentionDate: string
+  downloadCount: number
+  lastAccessed: string | null
+  isUploaded: boolean
+}
+
+interface UploadData {
+  name: string
+  type: string
+  period: string
+  description: string
+}
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,135 +44,87 @@ import { Search, Filter, Download, Eye, FileText, BarChart3, Calendar, Upload } 
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 
-// Enhanced reports data with 3-year retention policy
-const initialReportsData = [
-  {
-    id: "RPT001",
-    name: "Monthly Inventory Summary",
-    type: "Inventory",
-    dateGenerated: "2024-01-15 10:30",
-    generatedBy: "Captain Refa Jahan",
-    period: "January 2024",
-    format: "PDF",
-    status: "Completed",
-    fileSize: "2.4 MB",
-    description: "Complete inventory overview with stock levels and expiry dates",
-    retentionDate: "2027-01-15", // 3 years from generation
-    downloadCount: 12,
-    lastAccessed: "2024-01-20 14:30",
-    isUploaded: false,
-  },
-  {
-    id: "RPT002",
-    name: "Issue Activity Report",
-    type: "Issues",
-    dateGenerated: "2024-01-14 16:45",
-    generatedBy: "Sergeant Rafiq Islam",
-    period: "Last 30 Days",
-    format: "CSV",
-    status: "Completed",
-    fileSize: "1.8 MB",
-    description: "Detailed ammunition issue records and distribution patterns",
-    retentionDate: "2027-01-14",
-    downloadCount: 8,
-    lastAccessed: "2024-01-19 09:15",
-    isUploaded: false,
-  },
-  {
-    id: "RPT003",
-    name: "Low Stock Alert Summary",
-    type: "Alerts",
-    dateGenerated: "2024-01-13 09:15",
-    generatedBy: "Lt Col Saima Tania",
-    period: "Current",
-    format: "PDF",
-    status: "Completed",
-    fileSize: "856 KB",
-    description: "Critical and high priority stock alerts requiring attention",
-    retentionDate: "2027-01-13",
-    downloadCount: 15,
-    lastAccessed: "2024-01-21 11:00",
-    isUploaded: false,
-  },
-  {
-    id: "RPT004",
-    name: "User Activity Audit",
-    type: "Audit",
-    dateGenerated: "2024-01-12 14:20",
-    generatedBy: "Lt Col Saima Tania",
-    period: "December 2023",
-    format: "Excel",
-    status: "Completed",
-    fileSize: "3.2 MB",
-    description: "Complete user activity log with login and transaction records",
-    retentionDate: "2027-01-12",
-    downloadCount: 5,
-    lastAccessed: "2024-01-18 16:45",
-    isUploaded: false,
-  },
-  {
-    id: "RPT005",
-    name: "Quarterly Stock Forecast",
-    type: "Analytics",
-    dateGenerated: "2024-01-11 11:00",
-    generatedBy: "Captain Refa Jahan",
-    period: "Q1 2024",
-    format: "PDF",
-    status: "Processing",
-    fileSize: "Pending",
-    description: "Predictive analysis for ammunition requirements and procurement",
-    retentionDate: "2027-01-11",
-    downloadCount: 0,
-    lastAccessed: null,
-    isUploaded: false,
-  },
-  {
-    id: "RPT006",
-    name: "Annual Security Report",
-    type: "Security",
-    dateGenerated: "2023-12-31 23:59",
-    generatedBy: "Lt Col Saima Tania",
-    period: "Year 2023",
-    format: "PDF",
-    status: "Completed",
-    fileSize: "4.1 MB",
-    description: "Comprehensive security analysis and incident reports for 2023",
-    retentionDate: "2026-12-31",
-    downloadCount: 22,
-    lastAccessed: "2024-01-15 08:30",
-    isUploaded: false,
-  },
-]
+// API functions for reports
+const fetchReports = async () => {
+  try {
+    const response = await fetch('http://localhost:3001/api/reports');
+    if (!response.ok) throw new Error('Failed to fetch reports');
+    const data = await response.json();
+    return data.map((report: any) => ({
+      id: report.report_id,
+      name: report.name,
+      type: report.type,
+      dateGenerated: new Date(report.date_generated).toLocaleString(),
+      generatedBy: report.generated_by_appointment,
+      period: report.period,
+      format: report.format,
+      status: report.status,
+      fileSize: report.file_size,
+      description: report.description,
+      retentionDate: report.retention_date,
+      downloadCount: report.download_count,
+      lastAccessed: report.last_accessed ? new Date(report.last_accessed).toLocaleString() : null,
+      isUploaded: report.is_uploaded,
+    }));
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    return [];
+  }
+};
 
 export function ReportsTable() {
-  const [reportsData, setReportsData] = useState(initialReportsData)
+  const [reportsData, setReportsData] = useState<Report[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<any>(null)
+  const [selectedItem, setSelectedItem] = useState<Report | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [uploadData, setUploadData] = useState({
+  const [uploadData, setUploadData] = useState<UploadData>({
     name: "",
     type: "Custom",
     period: "",
-    description: "",
+    description: ""
   })
   const { toast } = useToast()
 
-  const filteredData = reportsData.filter((item) => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.generatedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = typeFilter === "all" || item.type.toLowerCase() === typeFilter.toLowerCase()
-    const matchesStatus = statusFilter === "all" || item.status.toLowerCase() === statusFilter.toLowerCase()
-    return matchesSearch && matchesType && matchesStatus
-  })
+  // Fetch reports on component mount
+  useEffect(() => {
+    loadReports()
+  }, [])
 
-  const getTypeBadge = (type: string) => {
+  const loadReports = async () => {
+    setIsLoading(true)
+    try {
+      const reports = await fetchReports()
+      setReportsData(reports)
+    } catch (error) {
+      console.error('Error loading reports:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load reports",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+    const filteredReports = reportsData.filter((item) => {
+      const matchesSearch = searchTerm === "" ||
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.description?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+
+      const matchesType = typeFilter === "all" || item.type === typeFilter
+      const matchesStatus = statusFilter === "all" || item.status === statusFilter
+
+      return matchesSearch && matchesType && matchesStatus
+    })
+    
+    const getTypeBadge = (type: string) => {
     switch (type.toLowerCase()) {
       case "inventory":
         return <Badge variant="default">Inventory</Badge>
@@ -221,27 +196,36 @@ export function ReportsTable() {
     setIsViewDialogOpen(true)
   }
 
-  const handleDownload = (item: any) => {
-    // Update download count and last accessed date
-    setReportsData((prev) =>
-      prev.map((report) =>
-        report.id === item.id
-          ? {
-              ...report,
-              downloadCount: report.downloadCount + 1,
-              lastAccessed: new Date().toISOString().slice(0, 16).replace("T", " "),
-            }
-          : report,
-      ),
-    )
+  const handleDownload = async (item: any) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/reports/${item.id}/download`)
+      if (!response.ok) throw new Error('Download failed')
 
-    toast({
-      title: "Download Started",
-      description: `Downloading ${item.name} (${item.fileSize})`,
-    })
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${item.name}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
 
-    console.log("Downloading report:", item.id)
-    // In a real application, this would trigger a file download
+      // Refresh reports data to get updated download count
+      await loadReports()
+
+      toast({
+        title: "Download Started",
+        description: `Downloading ${item.name} (${item.fileSize})`,
+      })
+    } catch (error) {
+      console.error('Download error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to download report",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -260,7 +244,7 @@ export function ReportsTable() {
     }
   }
 
-  const handleUploadSubmit = () => {
+  const handleUploadSubmit = async () => {
     if (!uploadFile || !uploadData.name || !uploadData.period) {
       toast({
         title: "Missing Information",
@@ -270,32 +254,55 @@ export function ReportsTable() {
       return
     }
 
-    const newReport = {
-      id: `RPT${Date.now().toString().slice(-3)}`,
+    const formData = new FormData()
+    formData.append('file', uploadFile)
+    formData.append('metadata', JSON.stringify({
       name: uploadData.name,
       type: uploadData.type,
-      dateGenerated: new Date().toISOString().slice(0, 16).replace("T", " "),
-      generatedBy: "Current User", // In real app, get from auth context
+      date_generated: new Date().toISOString(),
       period: uploadData.period,
       format: "PDF",
-      status: "Completed",
-      fileSize: `${(uploadFile.size / (1024 * 1024)).toFixed(1)} MB`,
+      status: "Active",
+      file_size: `${(uploadFile.size / (1024 * 1024)).toFixed(1)} MB`,
       description: uploadData.description || "Uploaded PDF report",
-      retentionDate: new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 3 years from now
-      downloadCount: 0,
-      lastAccessed: null,
-      isUploaded: true,
+      retention_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      download_count: 0,
+      last_accessed: null,
+      is_uploaded: true
+    }))
+
+    try {
+      const response = await fetch('http://localhost:3001/api/reports/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) throw new Error('Upload failed')
+
+      const data = await response.json()
+      
+      await loadReports() // Refresh the reports list
+      setIsUploadDialogOpen(false)
+      setUploadFile(null)
+      setUploadData({ 
+        name: "", 
+        type: "Custom", 
+        period: "", 
+        description: ""
+      })
+
+      toast({
+        title: "Report Uploaded Successfully",
+        description: `${uploadData.name} has been uploaded successfully`,
+      })
+    } catch (error) {
+      console.error('Upload error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to upload report",
+        variant: "destructive",
+      })
     }
-
-    setReportsData((prev) => [newReport, ...prev])
-    setIsUploadDialogOpen(false)
-    setUploadFile(null)
-    setUploadData({ name: "", type: "Custom", period: "", description: "" })
-
-    toast({
-      title: "Report Uploaded Successfully",
-      description: `${newReport.name} has been uploaded with ID: ${newReport.id}`,
-    })
   }
 
   const isRetentionExpired = (retentionDate: string) => {
@@ -375,7 +382,7 @@ export function ReportsTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredData.map((item) => (
+            {filteredReports.map((item: Report) => (
               <TableRow key={item.id}>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
@@ -456,6 +463,7 @@ export function ReportsTable() {
                   placeholder="e.g., Monthly Security Report"
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="upload-type">Report Type</Label>
                 <Select

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Search, Filter, Edit, Eye } from "lucide-react"
 
-// Mock issues data
+
 const issuesData = [
   {
     id: "ISS001",

@@ -16,6 +16,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<boolean>
   logout: () => void
   isLoading: boolean
+  changePassword: (username: string, currentPassword: string, newPassword: string) => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -85,7 +86,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("ebek-user")
   }
 
-  return <AuthContext.Provider value={{ user, login, logout, isLoading }}>{children}</AuthContext.Provider>
+  const changePassword = async (username: string, currentPassword: string, newPassword: string): Promise<boolean> => {
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    if (mockPasswords[username] !== currentPassword) {
+      return false
+    }
+    mockPasswords[username] = newPassword
+    return true
+  }
+
+  return <AuthContext.Provider value={{ user, login, logout, isLoading, changePassword }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

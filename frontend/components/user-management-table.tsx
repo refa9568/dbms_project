@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,91 +20,63 @@ import { Search, Filter, Edit, Eye, UserCheck, UserX, RotateCcw, Shield, Key } f
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 
-// Enhanced users data with login activity tracking
-const usersData = [
-  {
-    id: "USR001",
-    username: "admin",
-    name: "Lt Col Saima Tania",
-    rank: "Lieutenant Colonel",
-    role: "CO",
-    appointment: "Commanding Officer",
-    email: "saima.tania@military.gov.bd",
-    phone: "+880-1711-123456",
-    status: "Active",
-    lastLogin: "2024-01-15 08:30",
-    dateCreated: "2023-06-15",
-    createdBy: "System Admin",
-    loginCount: 45,
-    failedLoginAttempts: 0,
-    accountLocked: false,
-    passwordLastChanged: "2024-01-01",
-    twoFactorEnabled: true,
-    permissions: ["Full Access", "User Management", "System Administration"],
-  },
-  {
-    id: "USR002",
-    username: "qm",
-    name: "Captain Refa Jahan",
-    rank: "Captain",
-    role: "QM",
-    appointment: "Quartermaster",
-    email: "refa.jahan@military.gov.bd",
-    phone: "+880-1711-234567",
-    status: "Active",
-    lastLogin: "2024-01-15 09:15",
-    dateCreated: "2023-07-20",
-    createdBy: "Lt Col Saima Tania",
-    loginCount: 38,
-    failedLoginAttempts: 1,
-    accountLocked: false,
-    passwordLastChanged: "2023-12-15",
-    twoFactorEnabled: true,
-    permissions: ["Inventory Management", "Issue Management", "Reports"],
-  },
-  {
-    id: "USR003",
-    username: "nco",
-    name: "Sergeant Rafiq Islam",
-    rank: "Sergeant",
-    role: "NCO",
-    appointment: "Ammunition NCO",
-    email: "rafiq.islam@military.gov.bd",
-    phone: "+880-1711-345678",
-    status: "Active",
-    lastLogin: "2024-01-14 16:45",
-    dateCreated: "2023-08-10",
-    createdBy: "Lt Col Saima Tania",
-    loginCount: 42,
-    failedLoginAttempts: 0,
-    accountLocked: false,
-    passwordLastChanged: "2023-11-20",
-    twoFactorEnabled: false,
-    permissions: ["Inventory View", "Issue Processing", "Basic Reports"],
-  },
-]
+
+interface User {
+  user_id: number
+  username: string
+  appointment: string
+  rk: string  // rank
+  role: "CO" | "QM" | "NCO"
+  email: string
+  phone: string
+  status: "Active" | "Inactive"
+  last_login: string | null
+}
+
+// Users will be populated from API
 
 export function UserManagementTable() {
+  const [users, setUsers] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<any>(null)
+  const [selectedItem, setSelectedItem] = useState<User | null>(null)
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
+
+  // Fetch users on component mount
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/users')
+      if (!response.ok) throw new Error('Failed to fetch users')
+      const data = await response.json()
+      setUsers(data)
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load users",
+        variant: "destructive",
+      })
+    }
+  }
   const { toast } = useToast()
 
-  const filteredData = usersData.filter((item) => {
+  const filteredData = users.filter((item) => {
     const matchesSearch =
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.rank.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.appointment.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.rk.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.email.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesRole = roleFilter === "all" || item.role.toLowerCase() === roleFilter.toLowerCase()
     const matchesStatus = statusFilter === "all" || item.status.toLowerCase() === statusFilter.toLowerCase()
@@ -148,9 +120,41 @@ export function UserManagementTable() {
     setIsViewDialogOpen(true)
   }
 
-  const handleEdit = (item: any) => {
+  const handleEdit = (item: User) => {
     setSelectedItem(item)
     setIsEditDialogOpen(true)
+  }
+
+  const handleEditSubmit = async (updatedData: Partial<User>) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/users/${selectedItem?.user_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update user');
+      }
+
+      toast({
+        title: "Success",
+        description: "User information updated successfully",
+      });
+      
+      setIsEditDialogOpen(false);
+      // Refresh the users list
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update user information",
+        variant: "destructive",
+      });
+    }
   }
 
   const handleChangePassword = (item: any) => {
@@ -188,43 +192,57 @@ export function UserManagementTable() {
     // In a real application, this would make an API call
   }
 
-  const handlePasswordChange = () => {
-    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+  const handlePasswordChange = async () => {
+    try {
+      if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+        toast({
+          title: "Missing Information",
+          description: "Please fill in all password fields.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        toast({
+          title: "Password Mismatch",
+          description: "New password and confirmation do not match.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Send request to backend API
+      const response = await fetch('http://localhost:3001/api/users/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: selectedItem?.user_id,
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to change password')
+      }
+
       toast({
-        title: "Missing Information",
-        description: "Please fill in all password fields.",
+        title: "Password Changed",
+        description: `Password has been updated successfully.`,
+      })
+
+      setIsChangePasswordDialogOpen(false)
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to change password. Please make sure your current password is correct.",
         variant: "destructive",
       })
-      return
     }
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast({
-        title: "Password Mismatch",
-        description: "New password and confirmation do not match.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (passwordData.newPassword.length < 8) {
-      toast({
-        title: "Password Too Short",
-        description: "Password must be at least 8 characters long.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    console.log("Changing password for user:", selectedItem?.id)
-    toast({
-      title: "Password Changed",
-      description: `Password for ${selectedItem?.name} has been updated successfully.`,
-    })
-
-    setIsChangePasswordDialogOpen(false)
-    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
-    // In a real application, this would make an API call
   }
 
   return (
@@ -283,28 +301,26 @@ export function UserManagementTable() {
               <TableHead>Role</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Login Activity</TableHead>
-              <TableHead>Security</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredData.map((item) => (
-              <TableRow key={item.id}>
+              <TableRow key={item.user_id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="text-xs">
-                        {item.name
+                        {item.appointment
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium">{item.name}</div>
+                      <div className="font-medium">{item.appointment}</div>
                       <div className="text-xs text-muted-foreground">
-                        {item.rank} • @{item.username}
+                        {item.rk} • @{item.username}
                       </div>
                     </div>
                   </div>
@@ -324,26 +340,6 @@ export function UserManagementTable() {
                 <TableCell>
                   <div>
                     {getStatusBadge(item.status)}
-                    {item.accountLocked && <div className="text-xs text-red-600 mt-1">Account Locked</div>}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="text-sm font-medium">{item.loginCount} logins</div>
-                    <div className="text-xs text-muted-foreground">Last: {item.lastLogin}</div>
-                    {item.failedLoginAttempts > 0 && (
-                      <div className="text-xs text-red-600">{item.failedLoginAttempts} failed attempts</div>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {item.twoFactorEnabled ? (
-                      <Shield className="h-4 w-4 text-green-500" title="2FA Enabled" />
-                    ) : (
-                      <Shield className="h-4 w-4 text-gray-400" title="2FA Disabled" />
-                    )}
-                    <div className="text-xs text-muted-foreground">PWD: {item.passwordLastChanged}</div>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -376,16 +372,7 @@ export function UserManagementTable() {
                         <UserCheck className="h-4 w-4" />
                       </Button>
                     )}
-                    {item.accountLocked && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-blue-600"
-                        onClick={() => handleUnlockAccount(item)}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    )}
+
                   </div>
                 </TableCell>
               </TableRow>
@@ -399,7 +386,7 @@ export function UserManagementTable() {
             <DialogHeader>
               <DialogTitle>Change Password</DialogTitle>
               <DialogDescription>
-                {selectedItem ? `Change password for ${selectedItem.name}` : "Change your password"}
+                {selectedItem ? `Change password for ${selectedItem.appointment}` : "Change your password"}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -454,19 +441,79 @@ export function UserManagementTable() {
           </DialogContent>
         </Dialog>
 
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+              <DialogDescription>Update information for {selectedItem?.appointment}</DialogDescription>
+            </DialogHeader>
+            {selectedItem && (
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const updatedData = {
+                  email: formData.get('email') as string,
+                  phone: formData.get('phone') as string,
+                  status: formData.get('status') as "Active" | "Inactive",
+                };
+                handleEditSubmit(updatedData);
+              }} className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      defaultValue={selectedItem.email}
+                      type="email"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      defaultValue={selectedItem.phone}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select name="status" defaultValue={selectedItem.status}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Save Changes</Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
         {/* View Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>User Details</DialogTitle>
-              <DialogDescription>Complete information for {selectedItem?.name}</DialogDescription>
+              <DialogDescription>Complete information for {selectedItem?.appointment}</DialogDescription>
             </DialogHeader>
             {selectedItem && (
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">User ID</Label>
-                    <p className="text-sm text-muted-foreground">{selectedItem.id}</p>
+                    <p className="text-sm text-muted-foreground">{selectedItem.user_id}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Username</Label>
@@ -475,22 +522,22 @@ export function UserManagementTable() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium">Full Name</Label>
-                    <p className="text-sm text-muted-foreground">{selectedItem.name}</p>
-                  </div>
-                  <div>
                     <Label className="text-sm font-medium">Rank</Label>
-                    <p className="text-sm text-muted-foreground">{selectedItem.rank}</p>
+                    <p className="text-sm text-muted-foreground">{selectedItem.rk}</p>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">Role</Label>
                     <div className="mt-1">{getRoleBadge(selectedItem.role)}</div>
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">Appointment</Label>
                     <p className="text-sm text-muted-foreground">{selectedItem.appointment}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Status</Label>
+                    <div className="mt-1">{getStatusBadge(selectedItem.status)}</div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -505,42 +552,8 @@ export function UserManagementTable() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium">Status</Label>
-                    <div className="mt-1">{getStatusBadge(selectedItem.status)}</div>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Account Created</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedItem.dateCreated} by {selectedItem.createdBy}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium">Login Activity</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedItem.loginCount} total logins
-                      <br />
-                      Last: {selectedItem.lastLogin}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Security</Label>
-                    <p className="text-sm text-muted-foreground">
-                      2FA: {selectedItem.twoFactorEnabled ? "Enabled" : "Disabled"}
-                      <br />
-                      Password changed: {selectedItem.passwordLastChanged}
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Permissions</Label>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {selectedItem.permissions.map((permission: string, index: number) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {permission}
-                      </Badge>
-                    ))}
+                    <Label className="text-sm font-medium">Last Login</Label>
+                    <p className="text-sm text-muted-foreground">{selectedItem.last_login || 'Never'}</p>
                   </div>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,96 +20,101 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 
-// Enhanced alerts data with system-generated alerts
-const initialAlertsData = [
-  {
-    id: "ALT001",
-    stockId: "INV004",
-    type: "Low Stock",
-    severity: "Critical",
-    message: ".50 BMG ammunition below minimum threshold (45/100)",
-    dateCreated: "2024-01-15 14:30",
-    status: "Open",
-    acknowledgedBy: null,
-    acknowledgedDate: null,
-    ammoType: ".50 BMG",
-    actionRequired: "Immediate restocking required",
-    estimatedImpact: "High - Training operations may be affected",
-    isSystemGenerated: true,
-  },
-  {
-    id: "ALT002",
-    stockId: "INV002",
-    type: "Low Stock",
-    severity: "High",
-    message: "7.62mm NATO ammunition below minimum threshold (150/200)",
-    dateCreated: "2024-01-15 10:15",
-    status: "Open",
-    acknowledgedBy: null,
-    acknowledgedDate: null,
-    ammoType: "7.62mm NATO",
-    actionRequired: "Schedule restocking within 48 hours",
-    estimatedImpact: "Medium - May affect upcoming exercises",
-    isSystemGenerated: true,
-  },
-  {
-    id: "ALT003",
-    stockId: "INV003",
-    type: "Expiry Warning",
-    severity: "Medium",
-    message: "9mm Parabellum ammunition expires in 30 days (2024-03-15)",
-    dateCreated: "2024-01-14 16:45",
-    status: "Acknowledged",
-    acknowledgedBy: "Captain Refa Jahan",
-    acknowledgedDate: "2024-01-15 09:00",
-    ammoType: "9mm Parabellum",
-    actionRequired: "Plan usage or disposal before expiry",
-    estimatedImpact: "Low - Sufficient time for action",
-    isSystemGenerated: true,
-  },
-  {
-    id: "ALT004",
-    stockId: "INV001",
-    type: "Stock Update",
-    severity: "Low",
-    message: "5.56mm NATO ammunition successfully restocked (+1000 rounds)",
-    dateCreated: "2024-01-13 11:20",
-    status: "Resolved",
-    acknowledgedBy: "Sergeant Rafiq Islam",
-    acknowledgedDate: "2024-01-13 11:25",
-    ammoType: "5.56mm NATO",
-    actionRequired: "No action required",
-    estimatedImpact: "Positive - Stock levels restored",
-    isSystemGenerated: true,
-  },
-  {
-    id: "ALT005",
-    stockId: "N/A",
-    type: "Security Alert",
-    severity: "Critical",
-    message: "Multiple failed login attempts detected for user: unknown_user",
-    dateCreated: "2024-01-12 23:45",
-    status: "Acknowledged",
-    acknowledgedBy: "Lt Col Saima Tania",
-    acknowledgedDate: "2024-01-13 08:00",
-    ammoType: "N/A",
-    actionRequired: "Monitor security logs and review access controls",
-    estimatedImpact: "High - Potential security breach attempt",
-    isSystemGenerated: true,
-  },
-]
+// API functions for alerts
+const fetchAlerts = async () => {
+  try {
+    const response = await fetch('http://localhost:3001/api/alerts');
+    const data = await response.json();
+    return data.map((alert: any) => ({
+      id: alert.alert_id,
+      stockId: alert.inventory_stock_id,
+      type: alert.type,
+      severity: alert.severity,
+      message: alert.alert_message,
+      dateCreated: new Date(alert.alert_date).toLocaleString(),
+      status: alert.status,
+      acknowledgedBy: alert.acknowledged_by_info,
+      acknowledgedDate: alert.acknowledged_date ? new Date(alert.acknowledged_date).toLocaleString() : null,
+      actionRequired: alert.action_required,
+      estimatedImpact: alert.estimated_impact,
+      isSystemGenerated: alert.is_system_generated,
+      lotNumber: alert.lot_number
+    }));
+  } catch (error) {
+    console.error('Error fetching alerts:', error);
+    return [];
+  }
+};
 
-// Mock inventory data for generating alerts
-const inventoryData = [
-  { id: "INV001", ammoType: "5.56mm NATO", quantity: 2500, minThreshold: 500 },
-  { id: "INV002", ammoType: "7.62mm NATO", quantity: 150, minThreshold: 200 },
-  { id: "INV003", ammoType: "9mm Parabellum", quantity: 800, minThreshold: 300, expiryDate: "2024-03-15" },
-  { id: "INV004", ammoType: ".50 BMG", quantity: 45, minThreshold: 100 },
-  { id: "INV005", ammoType: "12 Gauge Shotgun", quantity: 600, minThreshold: 200 },
-]
+const acknowledgeAlert = async (alertId: string, userId: number, notes?: string) => {
+  try {
+    const response = await fetch(`http://localhost:3001/api/alerts/${alertId}/acknowledge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, notes })
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error acknowledging alert:', error);
+    return false;
+  }
+};
+
+const resolveAlert = async (alertId: string, userId: number) => {
+  try {
+    const response = await fetch(`http://localhost:3001/api/alerts/${alertId}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId })
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error resolving alert:', error);
+    return false;
+  }
+};
+
+const deleteAlert = async (alertId: string) => {
+  try {
+    const response = await fetch(`http://localhost:3001/api/alerts/${alertId}`, {
+      method: 'DELETE'
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting alert:', error);
+    return false;
+  }
+};
+
+const dismissAlert = async (alertId: string, userId: number) => {
+  try {
+    const response = await fetch(`http://localhost:3001/api/alerts/${alertId}/dismiss`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId })
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error dismissing alert:', error);
+    return false;
+  }
+};
+
+const checkSystemAlerts = async () => {
+  try {
+    const response = await fetch('http://localhost:3001/api/alerts/check', {
+      method: 'POST'
+    });
+    const data = await response.json();
+    return data.alerts;
+  } catch (error) {
+    console.error('Error checking system alerts:', error);
+    return [];
+  }
+};
 
 export function AlertsTable() {
-  const [alertsData, setAlertsData] = useState(initialAlertsData)
+  const [alertsData, setAlertsData] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [severityFilter, setSeverityFilter] = useState("all")
@@ -117,85 +122,46 @@ export function AlertsTable() {
   const [isAckDialogOpen, setIsAckDialogOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<any>(null)
   const [ackNotes, setAckNotes] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
-  // Generate system alerts based on inventory data
-  const generateSystemAlerts = () => {
-    const newAlerts: any[] = []
-    const currentDate = new Date()
+  // Fetch alerts on component mount
+  useEffect(() => {
+    loadAlerts()
+  }, [])
 
-    inventoryData.forEach((item) => {
-      // Low stock alerts
-      if (item.quantity < item.minThreshold) {
-        const severity = item.quantity < item.minThreshold * 0.5 ? "Critical" : "High"
-        const alertId = `ALT${Date.now()}_${item.id}`
+  const loadAlerts = async () => {
+    setIsLoading(true)
+    const alerts = await fetchAlerts()
+    setAlertsData(alerts)
+    setIsLoading(false)
+  }
 
-        // Check if alert already exists
-        const existingAlert = alertsData.find(
-          (alert) => alert.stockId === item.id && alert.type === "Low Stock" && alert.status === "Open",
-        )
-
-        if (!existingAlert) {
-          newAlerts.push({
-            id: alertId,
-            stockId: item.id,
-            type: "Low Stock",
-            severity,
-            message: `${item.ammoType} ammunition below minimum threshold (${item.quantity}/${item.minThreshold})`,
-            dateCreated: currentDate.toISOString().slice(0, 16).replace("T", " "),
-            status: "Open",
-            acknowledgedBy: null,
-            acknowledgedDate: null,
-            ammoType: item.ammoType,
-            actionRequired:
-              severity === "Critical" ? "Immediate restocking required" : "Schedule restocking within 48 hours",
-            estimatedImpact:
-              severity === "Critical" ? "High - Operations may be affected" : "Medium - May affect upcoming activities",
-            isSystemGenerated: true,
-          })
-        }
+  // Generate system alerts by checking with backend
+  const generateSystemAlerts = async () => {
+    try {
+      setIsLoading(true)
+      const newAlerts = await checkSystemAlerts()
+      if (newAlerts && newAlerts.length > 0) {
+        await loadAlerts() // Reload all alerts
+        toast({
+          title: "System Alerts Generated",
+          description: `${newAlerts.length} new alert(s) generated based on current inventory data.`,
+        })
+      } else {
+        toast({
+          title: "No New Alerts",
+          description: "No new system alerts were generated.",
+        })
       }
-
-      // Expiry warnings
-      if (item.expiryDate) {
-        const expiryDate = new Date(item.expiryDate)
-        const daysUntilExpiry = Math.ceil((expiryDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24))
-
-        if (daysUntilExpiry <= 60 && daysUntilExpiry > 0) {
-          const alertId = `ALT${Date.now()}_EXP_${item.id}`
-
-          const existingAlert = alertsData.find(
-            (alert) => alert.stockId === item.id && alert.type === "Expiry Warning" && alert.status !== "Resolved",
-          )
-
-          if (!existingAlert) {
-            newAlerts.push({
-              id: alertId,
-              stockId: item.id,
-              type: "Expiry Warning",
-              severity: daysUntilExpiry <= 30 ? "High" : "Medium",
-              message: `${item.ammoType} ammunition expires in ${daysUntilExpiry} days (${item.expiryDate})`,
-              dateCreated: currentDate.toISOString().slice(0, 16).replace("T", " "),
-              status: "Open",
-              acknowledgedBy: null,
-              acknowledgedDate: null,
-              ammoType: item.ammoType,
-              actionRequired: "Plan usage or disposal before expiry",
-              estimatedImpact:
-                daysUntilExpiry <= 30 ? "Medium - Action needed soon" : "Low - Sufficient time for action",
-              isSystemGenerated: true,
-            })
-          }
-        }
-      }
-    })
-
-    if (newAlerts.length > 0) {
-      setAlertsData((prev) => [...newAlerts, ...prev])
+    } catch (error) {
       toast({
-        title: "System Alerts Generated",
-        description: `${newAlerts.length} new alert(s) generated based on current inventory data.`,
+        title: "Error",
+        description: "Failed to generate system alerts.",
+        variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -277,78 +243,99 @@ export function AlertsTable() {
     setIsAckDialogOpen(true)
   }
 
-  const handleDismiss = (item: any) => {
+  const handleDismiss = async (item: any) => {
     if (confirm(`Are you sure you want to dismiss alert ${item.id}?`)) {
-      setAlertsData((prev) =>
-        prev.map((alert) =>
-          alert.id === item.id
-            ? {
-                ...alert,
-                status: "Dismissed",
-                acknowledgedBy: "Current User",
-                acknowledgedDate: new Date().toISOString().slice(0, 16).replace("T", " "),
-              }
-            : alert,
-        ),
-      )
+      try {
+        // Currently using user_id 1 as example - should be replaced with actual logged-in user's ID
+        const success = await dismissAlert(item.id, 1)
+        if (success) {
+          await loadAlerts() // Reload alerts to get updated data
+          toast({
+            title: "Alert Dismissed",
+            description: `Alert ${item.id} has been dismissed.`,
+          })
+        } else {
+          throw new Error("Failed to dismiss alert")
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to dismiss alert.",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  const handleResolve = async (item: any) => {
+    try {
+      // Currently using user_id 1 as example - should be replaced with actual logged-in user's ID
+      const success = await resolveAlert(item.id, 1)
+      if (success) {
+        await loadAlerts() // Reload alerts to get updated data
+        toast({
+          title: "Alert Resolved",
+          description: `Alert ${item.id} has been resolved.`,
+        })
+      } else {
+        throw new Error("Failed to resolve alert")
+      }
+    } catch (error) {
       toast({
-        title: "Alert Dismissed",
-        description: `Alert ${item.id} has been dismissed.`,
+        title: "Error",
+        description: "Failed to resolve alert.",
+        variant: "destructive",
       })
     }
   }
 
-  const handleResolve = (item: any) => {
-    setAlertsData((prev) =>
-      prev.map((alert) =>
-        alert.id === item.id
-          ? {
-              ...alert,
-              status: "Resolved",
-              acknowledgedBy: "Current User",
-              acknowledgedDate: new Date().toISOString().slice(0, 16).replace("T", " "),
-            }
-          : alert,
-      ),
-    )
-    toast({
-      title: "Alert Resolved",
-      description: `Alert ${item.id} has been resolved.`,
-    })
-  }
-
-  const handleRemove = (item: any) => {
+  const handleRemove = async (item: any) => {
     if (confirm(`Are you sure you want to permanently remove alert ${item.id}?`)) {
-      setAlertsData((prev) => prev.filter((alert) => alert.id !== item.id))
-      toast({
-        title: "Alert Removed",
-        description: `Alert ${item.id} has been permanently removed.`,
-      })
+      try {
+        const success = await deleteAlert(item.id)
+        if (success) {
+          await loadAlerts() // Reload alerts to get updated data
+          toast({
+            title: "Alert Removed",
+            description: `Alert ${item.id} has been permanently removed.`,
+          })
+        } else {
+          throw new Error("Failed to remove alert")
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to remove alert.",
+          variant: "destructive",
+        })
+      }
     }
   }
 
-  const submitAcknowledgment = () => {
+  const submitAcknowledgment = async () => {
     if (selectedItem) {
-      setAlertsData((prev) =>
-        prev.map((alert) =>
-          alert.id === selectedItem.id
-            ? {
-                ...alert,
-                status: "Acknowledged",
-                acknowledgedBy: "Current User",
-                acknowledgedDate: new Date().toISOString().slice(0, 16).replace("T", " "),
-                notes: ackNotes,
-              }
-            : alert,
-        ),
-      )
-      toast({
-        title: "Alert Acknowledged",
-        description: `Alert ${selectedItem.id} has been acknowledged.`,
-      })
+      try {
+        // Currently using user_id 1 as example - should be replaced with actual logged-in user's ID
+        const success = await acknowledgeAlert(selectedItem.id, 1, ackNotes)
+        if (success) {
+          await loadAlerts() // Reload alerts to get updated data
+          toast({
+            title: "Alert Acknowledged",
+            description: `Alert ${selectedItem.id} has been acknowledged.`,
+          })
+          setIsAckDialogOpen(false)
+          setAckNotes("")
+        } else {
+          throw new Error("Failed to acknowledge alert")
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to acknowledge alert.",
+          variant: "destructive",
+        })
+      }
     }
-    setIsAckDialogOpen(false)
-    setAckNotes("")
   }
 
   return (
